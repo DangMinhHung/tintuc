@@ -101,6 +101,20 @@ section.blk{background:var(--card);border:1px solid var(--line);padding:22px;mar
 .stat .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
 .stat .v{font:900 26px Merriweather,serif;margin:2px 0}
 .stat .s{font-size:12px;color:var(--muted)}
+.goldgrid{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;margin-bottom:18px;align-items:start}
+.gtbl th,.gtbl td{padding:8px 8px}
+.gtbl thead th{text-align:center}
+.gtbl td.n small{display:block;font-size:11.5px;font-weight:600}
+.chartbox{border:1px solid var(--line);padding:12px 12px 8px;border-radius:4px}
+.chartbox h3{font-size:15px;margin:0 0 6px}
+.chartbox svg{width:100%;height:auto;display:block}
+.chartbox .lg{display:flex;gap:16px;justify-content:center;font-size:12.5px;color:var(--muted)}
+.chartbox .lg i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:5px}
+.subh{font-size:15px;margin:18px 0 8px}
+.aibul{margin-top:16px;background:#f6f3fb;border-left:4px solid #6b3fb8;padding:12px 16px 12px 14px}
+.aibul h3{margin:0 0 6px;font-size:15px;color:#4b2a8c}
+.aibul ul{margin:0;padding-left:20px;font-size:14.5px}
+.aibul li{margin:5px 0}
 .factors{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-top:18px}
 .factor{border:1px solid var(--line);border-top:3px solid var(--muted);padding:12px 14px;font-size:14px}
 .factor.up{border-top-color:var(--up)} .factor.down{border-top-color:var(--down)} .factor.mixed{border-top-color:var(--gold)}
@@ -167,7 +181,7 @@ footer{background:var(--top);color:#bdbdc2;font-size:13px;padding:22px 0;margin-
   .hero{grid-template-columns:1fr;grid-template-rows:300px 180px 180px}
   .tile:first-child{grid-row:auto}
   .tile:first-child h2{font-size:22px}
-  .goldtop,.two{grid-template-columns:1fr}
+  .goldtop,.two,.goldgrid{grid-template-columns:1fr}
   .item{grid-template-columns:1fr}
   .item .num{display:none}
   section.blk{padding:16px}
@@ -257,6 +271,33 @@ footer{background:var(--top);color:#bdbdc2;font-size:13px;padding:22px 0;margin-
     var s=String(v), cls = /^\s*\+/.test(s)?"up":(/^\s*[-−]/.test(s)?"down":"");
     return '<span class="'+cls+'">'+esc(s)+'</span>';
   }
+  function gchg(v){
+    if(!has(v)) return "";
+    var s=String(v).trim(); if(/^[+]?0$/.test(s)) return '<small style="color:var(--muted)">0</small>';
+    var dn=/^[-−]/.test(s); return '<small class="'+(dn?"down":"up")+'">'+(dn?"▼ ":"▲ ")+esc(s.replace(/^[-−+]/,""))+'</small>';
+  }
+  function fmtK(n){ return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,"."); }
+  function goldChart(H){
+    var d=arr(H.dates), b=arr(H.buy).map(Number), s=arr(H.sell).map(Number), n=d.length;
+    if(n<2) return '<div class="chartbox"><h3>Biểu đồ giá '+t(H.label||"SJC")+'</h3><p class="na">Chưa đủ dữ liệu để vẽ biểu đồ.</p></div>';
+    var all=b.concat(s).filter(function(x){return !isNaN(x);}), mn=Math.min.apply(null,all), mx=Math.max.apply(null,all);
+    var step=2500, lo=Math.floor(mn/step)*step, hi=Math.ceil(mx/step)*step; if(hi===lo) hi=lo+step;
+    var W=560,Hh=300,L=62,R=12,T=14,B=34, pw=W-L-R, ph=Hh-T-B;
+    function X(i){return L+pw*i/(n-1);} function Y(v){return T+ph*(1-(v-lo)/(hi-lo));}
+    var g='<svg viewBox="0 0 '+W+' '+Hh+'" role="img" aria-label="Biểu đồ giá vàng">';
+    for(var v=lo; v<=hi; v+=step){ g+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" stroke="#e6e3df"/><text x="'+(L-6)+'" y="'+(Y(v)+4)+'" font-size="11" text-anchor="end" fill="#6b6b70">'+(v/1000).toFixed(1).replace(".",",")+'tr</text>'; }
+    var every=Math.max(1,Math.ceil(n/7));
+    d.forEach(function(x,i){ if(i%every===0||i===n-1) g+='<text x="'+X(i)+'" y="'+(Hh-12)+'" font-size="11" text-anchor="middle" fill="#6b6b70">'+esc(x)+'</text>'; });
+    function line(a,col,name){
+      var p=a.map(function(v,i){return isNaN(v)?null:X(i).toFixed(1)+","+Y(v).toFixed(1);}).filter(Boolean).join(" ");
+      var o='<polyline points="'+p+'" fill="none" stroke="'+col+'" stroke-width="2.2" stroke-linejoin="round"/>';
+      a.forEach(function(v,i){ if(!isNaN(v)) o+='<circle cx="'+X(i).toFixed(1)+'" cy="'+Y(v).toFixed(1)+'" r="'+(i===n-1?4:2.6)+'" fill="'+col+'"><title>'+esc(d[i])+' · '+name+': '+fmtK(v)+'</title></circle>'; });
+      return o;
+    }
+    g+=line(s,"#2e8b2e","Bán ra")+line(b,"#e2342a","Mua vào")+'</svg>';
+    return '<div class="chartbox"><h3>Biểu đồ giá vàng '+t(H.label||"SJC")+' '+n+' ngày gần nhất</h3>'+g+
+      '<div class="lg"><span><i style="background:#e2342a"></i>Mua vào</span><span><i style="background:#2e8b2e"></i>Bán ra</span><span>Đơn vị: triệu đồng/lượng</span></div>'+src(H)+'</div>';
+  }
   function fmtDate(iso){ var p=String(iso).split("-"); return p.length===3? p[2]+"/"+p[1]+"/"+p[0] : iso; }
 
   function loadScript(file,ok,fail){
@@ -307,7 +348,23 @@ footer{background:var(--top);color:#bdbdc2;font-size:13px;padding:22px 0;margin-
     h+='<div class="goldtop">'+
        '<div class="stat"><div class="k">'+t(sjc.name||"Vàng trong nước")+' · bán ra</div><div class="v" style="color:var(--gold)">'+t(sjc.sell)+'</div><div class="s">nghìn đồng/lượng · '+chg(sjc.change)+'</div></div>'+
        '<div class="stat"><div class="k">Vàng thế giới</div><div class="v">'+t(W.price)+'</div><div class="s">USD/ounce · '+chg(W.change)+'</div>'+src(W)+'</div></div>';
+    var T=G.table||{}, H=G.history||{};
+    if(arr(T.rows).length || arr(H.dates).length){
+      h+='<div class="goldgrid"><div>';
+      if(arr(T.rows).length){
+        h+='<h3 class="subh" style="margin-top:0">Bảng giá vàng miếng theo thương hiệu</h3><div class="scroll"><table class="tbl gtbl"><thead><tr><th rowspan="2" style="text-align:left">Thương hiệu</th><th colspan="2">Hôm nay'+(has(T.today)?' ('+esc(T.today)+')':'')+'</th><th colspan="2">Hôm qua'+(has(T.yesterday)?' ('+esc(T.yesterday)+')':'')+'</th></tr>'+
+           '<tr><th style="text-align:right">Mua</th><th style="text-align:right">Bán</th><th style="text-align:right">Mua</th><th style="text-align:right">Bán</th></tr></thead><tbody>';
+        T.rows.forEach(function(r){
+          h+='<tr><td><b>'+t(r.name)+'</b></td><td class="n">'+t(r.buy)+gchg(r.buyChg)+'</td><td class="n">'+t(r.sell)+gchg(r.sellChg)+'</td><td class="n" style="font-weight:400">'+t(r.prevBuy)+'</td><td class="n" style="font-weight:400">'+t(r.prevSell)+'</td></tr>';
+        });
+        h+='</tbody></table></div><div class="meta" style="margin-top:6px">Đơn vị: nghìn đồng/lượng · ▲▼ so với hôm trước'+(has(T.source)||has(T.time)?' · ':'')+src(T).replace(/^<div class="meta">|<\/div>$/g,"")+'</div>';
+      }
+      h+='</div><div>';
+      if(arr(H.dates).length) h+=goldChart(H);
+      h+='</div></div>';
+    }
     if(arr(G.domestic).length){
+      if(arr(T.rows).length) h+='<h3 class="subh">Vàng miếng SJC và vàng nhẫn 9999</h3>';
       h+='<div class="scroll"><table class="tbl"><thead><tr><th>Loại vàng</th><th style="text-align:right">Mua vào</th><th style="text-align:right">Bán ra</th><th style="text-align:right">Thay đổi</th><th>Nguồn</th></tr></thead><tbody>';
       G.domestic.forEach(function(r){
         var u=safeUrl(r.url);
@@ -373,7 +430,14 @@ footer{background:var(--top);color:#bdbdc2;font-size:13px;padding:22px 0;margin-
          (u?'<a href="'+u+'" target="_blank" rel="noopener">'+t(n.title)+'</a>':t(n.title))+'</h3>'+
          (has(n.summary)?'<p>'+esc(n.summary)+'</p>':'')+src(n)+'</div></div>';
     });
-    h+='</div></section>';
+    h+='</div>';
+    if(arr(D.aiBullets).length){
+      h+='<div class="aibul"><h3>⚡ Tóm tắt nhanh tin AI</h3><ul>'+D.aiBullets.map(function(b){
+        if(typeof b==="string") return '<li>'+esc(b)+'</li>';
+        var u=safeUrl(b&&b.url); return '<li>'+t(b&&b.text)+(u?' <a class="meta" href="'+u+'" target="_blank" rel="noopener">'+esc(b.source||"Nguồn")+' ↗</a>':'')+'</li>';
+      }).join("")+'</ul></div>';
+    }
+    h+='</section>';
 
     // outlook
     var O=D.outlook||{};
